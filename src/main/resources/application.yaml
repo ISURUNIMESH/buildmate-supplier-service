@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: material-service
+
+  data:
+    mongodb:
+      host: localhost
+      port: 27020
+      database: material_db
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+server:
+  port: 8081
+
+app:
+  api-key: construction123
+
+logging:
+  level:
+    root: INFO
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html    
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
+endpoint:
+  health:
+    show-details: always    
