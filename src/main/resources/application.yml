@@ -1,0 +1,47 @@
+spring:
+  application:
+    name: supplier-service
+
+  data:
+    mongodb:
+      uri: mongodb://localhost:27021/supplier_db
+
+  mongodb:
+    uri: mongodb://localhost:27021/supplier_db
+
+supplier:
+  api-key:
+    default: ${SUPPLIER_API_KEY:}
+
+server:
+  port: 8084
+
+logging:
+  level:
+    root: INFO
+    com.buildmate.supplier: INFO
+    org.springframework.data.mongodb: INFO
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+management:
+  info:
+    env:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+info:
+  app:
+    name: supplier-service
+    description: BuildMate Supplier Service
+    version: 1.0.0

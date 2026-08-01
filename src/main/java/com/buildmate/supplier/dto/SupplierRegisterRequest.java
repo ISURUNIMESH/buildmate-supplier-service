@@ -1,0 +1,42 @@
+package com.buildmate.supplier.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class SupplierRegisterRequest {
+    @NotBlank
+    private String supplierCode;
+    
+    @NotBlank
+    private String companyName;
+    
+    @NotBlank
+    private String ownerName;
+    
+    @NotBlank
+    @Email
+    private String email;
+    
+    @NotBlank
+    private String password;
+    
+    @NotBlank
+    private String phone;
+    
+    @NotBlank
+    private String address;
+    
+    @NotBlank
+    private String district;
+    
+    @NotBlank
+    private String businessRegistrationNo;
+}
