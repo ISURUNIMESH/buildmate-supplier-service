@@ -1,0 +1,15 @@
+spring:
+  mongodb:
+    uri: mongodb://localhost:27023/payment_db
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+server:
+  port: 8080
+
+app:
+  api-key: real-construction-2026
