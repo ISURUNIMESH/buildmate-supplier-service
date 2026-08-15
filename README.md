@@ -244,4 +244,280 @@ More detail: [`docs/`](docs/).
 - Gateway is the JWT perimeter; keep direct `:28084–28087` private in production
 - API keys and RabbitMQ passwords live in local `.env` only
 
+# BuildMate - Dockerized Microservices API Testing Guide
+
+## Running the Project
+
+### Build all services
+
+bash
+docker compose build --no-cache
+
+
+### Start all containers
+
+bash
+docker compose up -d
+
+
+### Check running containers
+
+bash
+docker compose ps
+
+
+---
+
+## Service Ports
+
+| Service | Port |
+| --- | --- |
+| Client | 25173 |
+| API Gateway | 28080 |
+| Auth Service | 9000 |
+| Supplier Service | 28084 |
+| Material Service | 28085 |
+| Payment Service | 28086 |
+| Order Inventory Service | 28087 |
+| RabbitMQ Management | 25673 |
+
+---
+
+# RabbitMQ
+
+## Open RabbitMQ Dashboard
+
+text
+http://localhost:25673
+
+
+## Default Login
+
+text
+Username: guest
+Password: guest
+
+
+---
+
+# Postman API Testing
+
+---
+
+## Auth Service
+
+### Create User
+
+http
+POST http://localhost:9000/auth/register
+
+
+json
+{
+    "username": "testuser",
+    "email": "test@test.com",
+    "password": "123456"
+}
+
+
+---
+
+### Login
+
+http
+POST http://localhost:9000/auth/login
+
+
+json
+{
+    "email": "test@test.com",
+    "password": "123456"
+}
+
+
+---
+
+## Supplier Service
+
+### Get All Suppliers
+
+http
+GET http://localhost:28084/suppliers
+
+
+---
+
+### Create Supplier
+
+http
+POST http://localhost:28084/suppliers
+
+
+json
+{
+    "supplierCode": "S_020",
+    "companyName": "ABC Company",
+    "email": "abc@gmail.com",
+    "phone": "0712345678"
+}
+
+
+---
+
+### Get Materials by Supplier
+
+http
+GET http://localhost:28084/suppliers/{supplierId}/materials
+
+
+Example:
+
+http
+GET http://localhost:28084/suppliers/6874abcd123/materials
+
+
+---
+
+## Material Service
+
+### Get All Materials
+
+http
+GET http://localhost:28085/materials
+
+
+---
+
+### Create Material
+
+http
+POST http://localhost:28085/materials
+
+
+json
+{
+    "materialCode": "M_020",
+    "name": "Cement",
+    "price": 1500,
+    "supplierId": "SUPPLIER_ID"
+}
+
+
+---
+
+## Payment Service
+
+### Get All Payments
+
+http
+GET http://localhost:28086/payments
+
+
+---
+
+### Create Payment
+
+http
+POST http://localhost:28086/payments
+
+
+json
+{
+    "orderId": "ORDER_001",
+    "userId": "USER_001",
+    "amount": 1200,
+    "paymentMethod": "CARD",
+    "currency": "LKR",
+    "status": "SUCCESS"
+}
+
+
+---
+
+## Order Inventory Service
+
+### Get All Inventory Records
+
+http
+GET http://localhost:28087/inventory
+
+
+---
+
+### Create Inventory
+
+http
+POST http://localhost:28087/inventory
+
+
+json
+{
+    "materialId": "MATERIAL_ID",
+    "availableQuantity": 100,
+    "reservedQuantity": 0,
+    "minimumStock": 10
+}
+
+
+---
+
+## RabbitMQ Verification
+
+### List Exchanges
+
+bash
+docker exec rabbitmq rabbitmqctl list_exchanges
+
+
+---
+
+### List Queues
+
+bash
+docker exec rabbitmq rabbitmqctl list_queues
+
+
+---
+
+### List Consumers
+
+bash
+docker exec rabbitmq rabbitmqctl list_consumers
+
+
+---
+
+### List Bindings
+
+bash
+docker exec rabbitmq rabbitmqctl list_bindings source_name destination_name routing_key
+
+
+---
+
+## Docker Commands
+
+### Rebuild Everything
+
+bash
+docker compose build --no-cache
+
+
+### Restart Containers
+
+bash
+docker compose restart
+
+
+### Stop Containers
+
+bash
+docker compose down
+
+
+### View Logs
+
+bash
+docker compose logs -f  
+
 
