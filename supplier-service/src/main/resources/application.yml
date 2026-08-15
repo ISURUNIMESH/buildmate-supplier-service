@@ -1,0 +1,71 @@
+spring:
+  application:
+    name: supplier-service
+
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27021/supplier_db}
+
+  mongodb:
+    uri: ${MONGODB_URI:mongodb://localhost:27021/supplier_db}
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:25672}
+    username: ${RABBITMQ_USERNAME:}
+    password: ${RABBITMQ_PASSWORD}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    template:
+      retry:
+        enabled: true
+        initial-interval: 1000
+        max-attempts: 3
+        multiplier: 2.0
+    listener:
+      simple:
+        missing-queues-fatal: false
+        auto-startup: true
+
+supplier:
+  api-key:
+    default: ${SUPPLIER_API_KEY:}
+
+buildmate:
+  material-service:
+    url: ${MATERIAL_SERVICE_URL:http://localhost:28085}
+
+server:
+  port: ${SERVER_PORT:28084}
+
+logging:
+  level:
+    root: INFO
+    com.buildmate.supplier: INFO
+    org.springframework.data.mongodb: INFO
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+management:
+  info:
+    env:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+  health:
+    rabbit:
+      enabled: false
+
+info:
+  app:
+    name: supplier-service
+    description: BuildMate Supplier Service
+    version: 1.0.0
