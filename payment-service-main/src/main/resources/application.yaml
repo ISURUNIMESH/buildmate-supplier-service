@@ -1,0 +1,58 @@
+spring:
+  application:
+    name: payment-service
+
+  mongodb:
+    uri: ${MONGODB_URI:mongodb://localhost:27022/payment_db}
+
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27022/payment_db}
+      repositories:
+        enabled: true
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:25672}
+    username: ${RABBITMQ_USERNAME:}
+    password: ${RABBITMQ_PASSWORD}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    listener:
+      simple:
+        acknowledge-mode: auto
+        prefetch: 10
+        missing-queues-fatal: false
+        default-requeue-rejected: false
+        auto-startup: true
+        retry:
+          enabled: true
+          initial-interval: 1000
+          max-attempts: 3
+          multiplier: 2.0
+    template:
+      retry:
+        enabled: true
+        initial-interval: 1000
+        max-attempts: 3
+        multiplier: 2.0
+
+server:
+  port: ${SERVER_PORT:28086}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+  health:
+    rabbit:
+      enabled: false

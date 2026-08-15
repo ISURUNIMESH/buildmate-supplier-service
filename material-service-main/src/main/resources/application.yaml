@@ -1,0 +1,59 @@
+spring:
+  application:
+    name: material-service
+
+  mongodb:
+    uri: ${MONGODB_URI:mongodb://localhost:27020/material_db}
+
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27020/material_db}
+      repositories:
+        enabled: true
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:25672}
+    username: ${RABBITMQ_USERNAME:}
+    password: ${RABBITMQ_PASSWORD}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    template:
+      retry:
+        enabled: true
+        initial-interval: 1000
+        max-attempts: 3
+        multiplier: 2.0
+    listener:
+      simple:
+        missing-queues-fatal: false
+        auto-startup: true
+
+server:
+  port: ${SERVER_PORT:28085}
+
+material:
+  api-key:
+    default: ${MATERIAL_API_KEY:}
+
+logging:
+  level:
+    root: INFO
+    com.buildmate.material: INFO
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+  health:
+    rabbit:
+      enabled: false

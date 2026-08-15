@@ -1,0 +1,53 @@
+server:
+  port: 9000
+
+spring:
+  application:
+    name: auth-server
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/buildmate_auth_db}
+  mongodb:
+    uri: ${MONGODB_URI:mongodb://localhost:27017/buildmate_auth_db}
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:YOUR_GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET:YOUR_GOOGLE_CLIENT_SECRET}
+            scope:
+              - openid
+              - profile
+              - email
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            client-name: Google
+
+buildmate:
+  auth:
+    issuer: ${BUILDMATE_AUTH_ISSUER:http://localhost:9000}
+    access-token-ttl-minutes: 60
+    frontend-success-url: ${BUILDMATE_FRONTEND_SUCCESS_URL:http://localhost:25173/oauth/callback}
+    frontend-failure-url: ${BUILDMATE_FRONTEND_FAILURE_URL:http://localhost:25173/login}
+    rsa-key-id: buildmate-auth-key
+    rsa-key-path: ${BUILDMATE_AUTH_RSA_KEY_PATH:${user.home}/.buildmate/auth-rsa.jwk}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+logging:
+  level:
+    org.springframework.security: INFO
+    com.buildmate.auth: INFO

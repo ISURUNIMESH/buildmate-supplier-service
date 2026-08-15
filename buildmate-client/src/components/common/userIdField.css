@@ -1,0 +1,35 @@
+.user-id-field {
+  width: 100%;
+}
+
+.user-id-locked {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-height: 42px;
+  padding: 0.45rem 0.7rem;
+  border-radius: var(--radius-sm, 8px);
+  border: 1px solid var(--border);
+  background: var(--surface-muted, #f8fafc);
+  color: var(--text);
+}
+
+.user-id-locked.is-disabled {
+  opacity: 0.65;
+}
+
+.user-id-locked-label {
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.user-id-locked-id {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.user-id-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}

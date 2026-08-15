@@ -1,0 +1,348 @@
+# BuildHub — Docker Compose (authoritative local deployment)
+#
+# Final host port map: see PORTS.md
+#
+#   API stack (infra + Spring services, no React):
+#     docker compose --profile api up -d --build
+#
+#   Full stack (API + frontend):
+#     docker compose --profile full up -d --build
+#
+#   Status / logs / stop:
+#     docker compose ps
+#     docker compose logs -f <service>
+#     docker compose --profile full down
+#
+#   DATA-DESTRUCTIVE (removes volumes): docker compose --profile full down -v
+#
+name: buildmate
+
+x-api-service: &api-service
+  profiles: ["api", "full"]
+  restart: unless-stopped
+  networks:
+    - buildmate-network
+
+services:
+  # ---------------------------------------------------------------------------
+  # MongoDB (one database container per service — isolated volumes)
+  # ---------------------------------------------------------------------------
+  auth-mongo:
+    <<: *api-service
+    image: mongo:7
+    container_name: auth-mongo
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: buildmate_auth_db
+    volumes:
+      - auth-mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  material-mongo:
+    <<: *api-service
+    image: mongo:7
+    container_name: material-mongo
+    ports:
+      - "27020:27017"
+    environment:
+      MONGO_INITDB_DATABASE: material_db
+    volumes:
+      - material-mongo-data:/data/db
+      - ./docker/mongo-init/material:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  supplier-mongo:
+    <<: *api-service
+    image: mongo:7
+    container_name: supplier-mongo
+    ports:
+      - "27021:27017"
+    environment:
+      MONGO_INITDB_DATABASE: supplier_db
+    volumes:
+      - supplier-mongo-data:/data/db
+      - ./docker/mongo-init/supplier:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  payment-mongo:
+    <<: *api-service
+    image: mongo:7
+    container_name: payment-mongo
+    ports:
+      - "27022:27017"
+    environment:
+      MONGO_INITDB_DATABASE: payment_db
+    volumes:
+      - payment-mongo-data:/data/db
+      - ./docker/mongo-init/payment:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  order-mongo:
+    <<: *api-service
+    image: mongo:7
+    container_name: order-mongo
+    ports:
+      - "27023:27017"
+    environment:
+      MONGO_INITDB_DATABASE: order_inventory_db
+    volumes:
+      - order-mongo-data:/data/db
+      - ./docker/mongo-init/order:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # ---------------------------------------------------------------------------
+  # RabbitMQ (internal AMQP 5672 / management 15672)
+  # ---------------------------------------------------------------------------
+  rabbitmq:
+    <<: *api-service
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    hostname: rabbitmq
+    ports:
+      - "25672:5672"
+      - "25673:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:?Set RABBITMQ_USERNAME in .env}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # Spring Boot API services (Docker DNS — never localhost for deps)
+  # ---------------------------------------------------------------------------
+  auth-server:
+    <<: *api-service
+    build:
+      context: ./auth-server
+      dockerfile: Dockerfile
+    container_name: auth-server
+    ports:
+      - "9000:9000"
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SPRING_CONFIG_ADDITIONAL_LOCATION: optional:file:/app/config/
+      MONGODB_URI: mongodb://auth-mongo:27017/buildmate_auth_db
+      SPRING_DATA_MONGODB_URI: mongodb://auth-mongo:27017/buildmate_auth_db
+      SPRING_MONGODB_URI: mongodb://auth-mongo:27017/buildmate_auth_db
+      # Issuer / Google redirect must match browser-facing Auth host port
+      BUILDMATE_AUTH_ISSUER: http://localhost:9000
+      BUILDMATE_FRONTEND_SUCCESS_URL: http://localhost:25173/oauth/callback
+      BUILDMATE_FRONTEND_FAILURE_URL: http://localhost:25173/login
+      BUILDMATE_AUTH_RSA_KEY_PATH: /app/.buildmate/auth-rsa.jwk
+    volumes:
+      - auth-rsa-data:/app/.buildmate
+      - ./auth-server/config:/app/config:ro
+    depends_on:
+      auth-mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9000/actuator/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
+
+  supplier-service:
+    <<: *api-service
+    build:
+      context: ./supplier-service
+      dockerfile: Dockerfile
+    container_name: supplier-service
+    ports:
+      - "28084:28084"
+    environment:
+      SERVER_PORT: "28084"
+      MONGODB_URI: mongodb://supplier-mongo:27017/supplier_db
+      SPRING_DATA_MONGODB_URI: mongodb://supplier-mongo:27017/supplier_db
+      SPRING_MONGODB_URI: mongodb://supplier-mongo:27017/supplier_db
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:?Set RABBITMQ_USERNAME in .env}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
+      SUPPLIER_API_KEY: ${SUPPLIER_API_KEY:-buildmate-supplier-key}
+      MATERIAL_SERVICE_URL: http://material-service:28085
+    depends_on:
+      supplier-mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  material-service:
+    <<: *api-service
+    build:
+      context: ./material-service-main
+      dockerfile: Dockerfile
+    container_name: material-service
+    ports:
+      - "28085:28085"
+    environment:
+      SERVER_PORT: "28085"
+      MONGODB_URI: mongodb://material-mongo:27017/material_db
+      SPRING_DATA_MONGODB_URI: mongodb://material-mongo:27017/material_db
+      SPRING_MONGODB_URI: mongodb://material-mongo:27017/material_db
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:?Set RABBITMQ_USERNAME in .env}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
+      MATERIAL_API_KEY: ${MATERIAL_API_KEY:-buildmate-material-key}
+    depends_on:
+      material-mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  payment-service:
+    <<: *api-service
+    build:
+      context: ./payment-service-main
+      dockerfile: Dockerfile
+    container_name: payment-service
+    ports:
+      - "28086:28086"
+    environment:
+      SERVER_PORT: "28086"
+      MONGODB_URI: mongodb://payment-mongo:27017/payment_db
+      SPRING_DATA_MONGODB_URI: mongodb://payment-mongo:27017/payment_db
+      SPRING_MONGODB_URI: mongodb://payment-mongo:27017/payment_db
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:?Set RABBITMQ_USERNAME in .env}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
+      PAYMENT_API_KEY: ${PAYMENT_API_KEY:-buildmate-payment-key}
+    depends_on:
+      payment-mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  order-inventory-service:
+    <<: *api-service
+    build:
+      context: ./order-inventory-service-main
+      dockerfile: Dockerfile
+    container_name: order-inventory-service
+    ports:
+      - "28087:28087"
+    environment:
+      SERVER_PORT: "28087"
+      MONGODB_URI: mongodb://order-mongo:27017/order_inventory_db
+      SPRING_DATA_MONGODB_URI: mongodb://order-mongo:27017/order_inventory_db
+      SPRING_MONGODB_URI: mongodb://order-mongo:27017/order_inventory_db
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:?Set RABBITMQ_USERNAME in .env}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
+      ORDER_API_KEY: ${ORDER_API_KEY:-buildmate-order-key}
+    depends_on:
+      order-mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  api-gateway:
+    <<: *api-service
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    ports:
+      - "28080:28080"
+    environment:
+      SERVER_PORT: "28080"
+      # Issuer must match token iss (browser-facing Auth host)
+      JWT_ISSUER_URI: http://localhost:9000
+      # JWKS fetched on Docker network (not localhost)
+      JWT_JWK_SET_URI: http://auth-server:9000/oauth2/jwks
+      AUTH_SERVICE_URL: http://auth-server:9000
+      SUPPLIER_SERVICE_URL: http://supplier-service:28084
+      MATERIAL_SERVICE_URL: http://material-service:28085
+      PAYMENT_SERVICE_URL: http://payment-service:28086
+      ORDER_INVENTORY_SERVICE_URL: http://order-inventory-service:28087
+      SUPPLIER_API_KEY: ${SUPPLIER_API_KEY:-buildmate-supplier-key}
+      MATERIAL_API_KEY: ${MATERIAL_API_KEY:-buildmate-material-key}
+      PAYMENT_API_KEY: ${PAYMENT_API_KEY:-buildmate-payment-key}
+      ORDER_API_KEY: ${ORDER_API_KEY:-buildmate-order-key}
+    depends_on:
+      auth-server:
+        condition: service_healthy
+      supplier-service:
+        condition: service_healthy
+      material-service:
+        condition: service_healthy
+      payment-service:
+        condition: service_healthy
+      order-inventory-service:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # Frontend — profile "full" only (nginx listens on 80; host maps 25173)
+  # ---------------------------------------------------------------------------
+  buildmate-client:
+    profiles: ["full"]
+    build:
+      context: ./buildmate-client
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE: /api
+        VITE_AUTH_SERVER_URL: http://localhost:9000
+        VITE_GOOGLE_LOGIN_URL: http://localhost:9000/oauth2/authorization/google
+    container_name: buildmate-client
+    restart: unless-stopped
+    ports:
+      - "25173:80"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    networks:
+      - buildmate-network
+
+networks:
+  buildmate-network:
+    name: buildmate-network
+    driver: bridge
+
+volumes:
+  auth-mongo-data:
+  material-mongo-data:
+  supplier-mongo-data:
+  payment-mongo-data:
+  order-mongo-data:
+  rabbitmq-data:
+  auth-rsa-data:

@@ -1,0 +1,125 @@
+server:
+  port: ${SERVER_PORT:28080}
+
+spring:
+  application:
+    name: api-gateway
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:http://localhost:9000}
+          jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:9000/oauth2/jwks}
+  cloud:
+    gateway:
+      server:
+        webflux:
+          default-filters:
+            - name: RequestRateLimiter
+              args:
+                rate-limiter: "#{@inMemoryRateLimiter}"
+                key-resolver: "#{@clientKeyResolver}"
+          globalcors:
+            add-to-simple-url-handler-mapping: true
+            cors-configurations:
+              '[/**]':
+                allowedOrigins:
+                  - "http://localhost:3000"
+                  - "http://127.0.0.1:3000"
+                  - "http://localhost:25173"
+                  - "http://127.0.0.1:25173"
+                  - "http://localhost:5173"
+                  - "http://127.0.0.1:5173"
+                allowedMethods:
+                  - GET
+                  - POST
+                  - PUT
+                  - PATCH
+                  - DELETE
+                  - OPTIONS
+                allowedHeaders: "*"
+                allowCredentials: true
+                maxAge: 3600
+          filter:
+            request-rate-limiter:
+              deny-empty-key: false
+              empty-key-status-code: 429
+          routes:
+            - id: auth-me
+              uri: ${buildmate.services.auth}
+              predicates:
+                - Path=/api/auth/**
+              filters:
+                - RewritePath=/api/auth(?<segment>/?.*), /api/auth$\{segment}
+
+            - id: supplier-service
+              uri: ${buildmate.services.supplier}
+              predicates:
+                - Path=/api/suppliers/**
+              filters:
+                - RewritePath=/api(?<segment>/?.*), $\{segment}
+                - AddRequestHeader=X-API-KEY, ${buildmate.downstream.supplier-api-key}
+
+            - id: material-service
+              uri: ${buildmate.services.material}
+              predicates:
+                - Path=/api/materials/**,/api/brands/**,/api/categories/**
+              filters:
+                - RewritePath=/api(?<segment>/?.*), $\{segment}
+                - AddRequestHeader=X-API-KEY, ${buildmate.downstream.material-api-key}
+
+            - id: payment-service
+              uri: ${buildmate.services.payment}
+              predicates:
+                - Path=/api/payments/**,/api/invoices/**,/api/reports/**
+              filters:
+                - RewritePath=/api(?<segment>/?.*), $\{segment}
+                - AddRequestHeader=X-API-KEY, ${buildmate.downstream.payment-api-key}
+
+            - id: order-inventory-service
+              uri: ${buildmate.services.order-inventory}
+              predicates:
+                - Path=/api/orders/**,/api/inventory/**,/api/cart/**,/api/health/**
+              filters:
+                - RewritePath=/api(?<segment>/?.*), $\{segment}
+                - AddRequestHeader=X-API-KEY, ${buildmate.downstream.order-api-key}
+
+buildmate:
+  services:
+    auth: ${AUTH_SERVICE_URL:http://localhost:9000}
+    supplier: ${SUPPLIER_SERVICE_URL:http://localhost:28084}
+    material: ${MATERIAL_SERVICE_URL:http://localhost:28085}
+    payment: ${PAYMENT_SERVICE_URL:http://localhost:28086}
+    order-inventory: ${ORDER_INVENTORY_SERVICE_URL:http://localhost:28087}
+  downstream:
+    supplier-api-key: ${SUPPLIER_API_KEY:buildmate-supplier-key}
+    material-api-key: ${MATERIAL_API_KEY:buildmate-material-key}
+    payment-api-key: ${PAYMENT_API_KEY:buildmate-payment-key}
+    order-api-key: ${ORDER_API_KEY:buildmate-order-key}
+
+gateway:
+  rate-limit:
+    replenish-rate: 10
+    burst-capacity: 20
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      access: read_only
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    org.springframework.security: INFO

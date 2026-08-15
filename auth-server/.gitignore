@@ -1,0 +1,6 @@
+.env
+config/application-local.yml
+config/application.yml
+target/
+.idea/
+*.iml

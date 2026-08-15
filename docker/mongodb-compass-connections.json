@@ -1,0 +1,66 @@
+{
+  "type": "Compass Connections",
+  "version": { "$numberInt": "1" },
+  "connections": [
+    {
+      "id": "buildhub-auth-mongo",
+      "connectionOptions": {
+        "connectionString": "mongodb://localhost:27017/buildmate_auth_db"
+      },
+      "favorite": {
+        "name": "BuildHub — Auth (27017)",
+        "color": "color1"
+      },
+      "connectionSecrets": "",
+      "lastUsed": { "$date": { "$numberLong": "0" } }
+    },
+    {
+      "id": "buildhub-material-mongo",
+      "connectionOptions": {
+        "connectionString": "mongodb://localhost:27020/material_db"
+      },
+      "favorite": {
+        "name": "BuildHub — Material (27020)",
+        "color": "color2"
+      },
+      "connectionSecrets": "",
+      "lastUsed": { "$date": { "$numberLong": "0" } }
+    },
+    {
+      "id": "buildhub-supplier-mongo",
+      "connectionOptions": {
+        "connectionString": "mongodb://localhost:27021/supplier_db"
+      },
+      "favorite": {
+        "name": "BuildHub — Supplier (27021)",
+        "color": "color3"
+      },
+      "connectionSecrets": "",
+      "lastUsed": { "$date": { "$numberLong": "0" } }
+    },
+    {
+      "id": "buildhub-payment-mongo",
+      "connectionOptions": {
+        "connectionString": "mongodb://localhost:27022/payment_db"
+      },
+      "favorite": {
+        "name": "BuildHub — Payment (27022)",
+        "color": "color4"
+      },
+      "connectionSecrets": "",
+      "lastUsed": { "$date": { "$numberLong": "0" } }
+    },
+    {
+      "id": "buildhub-order-mongo",
+      "connectionOptions": {
+        "connectionString": "mongodb://localhost:27023/order_inventory_db"
+      },
+      "favorite": {
+        "name": "BuildHub — Order/Inventory (27023)",
+        "color": "color5"
+      },
+      "connectionSecrets": "",
+      "lastUsed": { "$date": { "$numberLong": "0" } }
+    }
+  ]
+}

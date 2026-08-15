@@ -1,0 +1,105 @@
+# BuildHub CI — build & test only (no application source changes required)
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  maven:
+    name: Maven (${{ matrix.module }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - auth-server
+          - api-gateway
+          - supplier-service
+          - material-service-main
+          - payment-service-main
+          - order-inventory-service-main
+    defaults:
+      run:
+        working-directory: ${{ matrix.module }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: ${{ matrix.module }}/pom.xml
+
+      - name: Ensure Maven Wrapper is executable
+        run: chmod +x mvnw
+
+      - name: Verify (compile + existing tests)
+        run: ./mvnw -B verify
+
+  frontend:
+    name: Frontend (Vite)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: buildmate-client
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: buildmate-client/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint (existing oxlint script)
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+  dockerfiles:
+    name: Validate Dockerfile (${{ matrix.context }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        context:
+          - auth-server
+          - api-gateway
+          - supplier-service
+          - material-service-main
+          - payment-service-main
+          - order-inventory-service-main
+          - buildmate-client
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Soft validation only — does not modify existing Dockerfiles.
+      # Full image build happens in CD after CI succeeds.
+      - name: Check Dockerfile exists and has a FROM instruction
+        working-directory: ${{ matrix.context }}
+        run: |
+          set -euo pipefail
+          test -f Dockerfile
+          test -s Dockerfile
+          grep -Eq '^[[:space:]]*FROM[[:space:]]+' Dockerfile
+          echo "Dockerfile OK: ${{ matrix.context }}/Dockerfile"

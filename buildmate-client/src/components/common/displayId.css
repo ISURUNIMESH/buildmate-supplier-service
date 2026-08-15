@@ -1,0 +1,13 @@
+.display-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 650;
+  font-size: 0.86em;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.display-id.is-empty {
+  color: var(--text-muted);
+  font-weight: 500;
+}
