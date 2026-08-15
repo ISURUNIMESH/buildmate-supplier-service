@@ -244,4 +244,4 @@ More detail: [`docs/`](docs/).
 - Gateway is the JWT perimeter; keep direct `:28084–28087` private in production
 - API keys and RabbitMQ passwords live in local `.env` only
 
-## Update inventory
+
